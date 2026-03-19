@@ -5,7 +5,7 @@ const fetch = require("node-fetch");
 const app = express();
 app.use(cors());
 
-const API_KEY = "ATAOVY_EO_ILAY_FOOTBALL_DATA_KEY_NAO";
+const API_KEY = "8f65d887b3054547946eb7d2b57a0a17";
 const PORT = process.env.PORT || 3000;
 
 function formatDate(date) {
@@ -16,8 +16,6 @@ function buildPrediction(match) {
   const home = match.homeTeam?.name || "Home";
   const away = match.awayTeam?.name || "Away";
 
-  // Placeholder intelligent kely aloha
-  // mbola tsy bookmaker/machine final io
   let top1 = "2-1";
   let top2 = "1-0";
   let top3 = "2-0";
@@ -25,7 +23,7 @@ function buildPrediction(match) {
   let reliability = 68;
   let profile = "Balanced match";
 
-  if (home.toLowerCase().includes("liverpool")) {
+  if (home.toLowerCase().includes("liverpool") || away.toLowerCase().includes("liverpool")) {
     top1 = "3-1";
     top2 = "3-0";
     top3 = "4-1";
