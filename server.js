@@ -5,7 +5,7 @@ const fetch = require("node-fetch");
 const app = express();
 app.use(cors());
 
-const API_KEY = "ATAOVY ETO NY KEY-NAO";
+const API_KEY = "8f65d887b3054547946eb7d2b57a0a17";
 
 app.get("/search", async (req, res) => {
   try {
@@ -35,6 +35,15 @@ app.get("/search", async (req, res) => {
       color2: "violet",
       color3: "red"
     }));
+
+    res.json(formatted);
+
+  } catch (err) {
+    res.json({ error: "error" });
+  }
+});
+
+app.listen(3000, () => console.log("Server running"));    }));
 
     res.json(formatted);
 
