@@ -5,8 +5,12 @@ const fetch = require("node-fetch");
 const app = express();
 app.use(cors());
 
+// KEYS
 const FOOTBALL_API_KEY = "8f65d887b3054547946eb7d2b57a0a17";
-const ODDS_API_KEY = "1f30422bfc883864ffa4e4c29dfc83f1";
+const ODDS_API_KEY = "1f30422bfc883864ffa4e4c29dfc83f13f1";
+const RAPID_API_KEY = "ba43f41a47mshf8b8b082d77b254p1c16e6jsn59f32a041a97";
+const RAPID_API_HOST = "free-football-api-data.p.rapidapi.com";
+
 const PORT = process.env.PORT || 3000;
 
 function formatDate(date) {
@@ -29,10 +33,8 @@ function sameTeams(aHome, aAway, bHome, bAway) {
   const ba = normalizeName(bAway);
 
   return (
-    ((ah.includes(bh) || bh.includes(ah)) &&
-      (aa.includes(ba) || ba.includes(aa))) ||
-    ((ah.includes(ba) || ba.includes(ah)) &&
-      (aa.includes(bh) || bh.includes(aa)))
+    ((ah.includes(bh) || bh.includes(ah)) && (aa.includes(ba) || ba.includes(aa))) ||
+    ((ah.includes(ba) || ba.includes(ah)) && (aa.includes(bh) || bh.includes(aa)))
   );
 }
 
@@ -156,18 +158,17 @@ function buildPrediction(match, oddsInfo) {
   };
 }
 
+// FOOTBALL-DATA MATCHES
 async function getMatchesWindow() {
   const now = new Date();
 
-  const past = new Date(now);
-  past.setDate(now.getDate() - 1);
-
+  const today = new Date(now);
   const future = new Date(now);
   future.setDate(now.getDate() + 7);
 
   const url =
     `https://api.football-data.org/v4/matches` +
-    `?dateFrom=${formatDate(past)}` +
+    `?dateFrom=${formatDate(today)}` +
     `&dateTo=${formatDate(future)}`;
 
   const response = await fetch(url, {
@@ -180,6 +181,7 @@ async function getMatchesWindow() {
   return Array.isArray(data.matches) ? data.matches : [];
 }
 
+// THE ODDS API
 async function getSoccerSportKeysFromOdds() {
   const response = await fetch(
     `https://api.the-odds-api.com/v4/sports/?apiKey=${ODDS_API_KEY}`
@@ -229,7 +231,9 @@ async function getOddsEvents() {
       if (Array.isArray(events)) {
         allEvents.push(...events);
       }
-    } catch (e) {}
+    } catch (e) {
+      // skip
+    }
   }
 
   return allEvents;
@@ -246,6 +250,36 @@ function findMatchingOdds(match, oddsEvents) {
   if (!event) return null;
   return extractH2H(event, home, away);
 }
+
+// RAPIDAPI VERIFIED ENDPOINT FROM YOUR CURL
+app.get("/event-stats", async (req, res) => {
+  try {
+    const eventid = req.query.eventid;
+    if (!eventid) {
+      return res.status(400).json({ error: "eventid is required" });
+    }
+
+    const response = await fetch(
+      `https://${RAPID_API_HOST}/football-event-statistics?eventid=${encodeURIComponent(eventid)}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-RapidAPI-Key": RAPID_API_KEY,
+          "X-RapidAPI-Host": RAPID_API_HOST,
+        },
+      }
+    );
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({
+      error: "RAPIDAPI_EVENT_STATS_ERROR",
+      message: err.message,
+    });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("MR GOAT REAL API LIVE");
@@ -277,6 +311,8 @@ app.get("/search", async (req, res) => {
     const q = String(req.query.q || "").trim().toLowerCase();
     if (!q) return res.json([]);
 
+    const words = q.split(/\s+/);
+
     const [matches, oddsEvents] = await Promise.all([
       getMatchesWindow(),
       getOddsEvents(),
@@ -286,8 +322,9 @@ app.get("/search", async (req, res) => {
       const home = (m.homeTeam?.name || "").toLowerCase();
       const away = (m.awayTeam?.name || "").toLowerCase();
       const comp = (m.competition?.name || "").toLowerCase();
+      const haystack = `${home} ${away} ${comp}`;
 
-      return home.includes(q) || away.includes(q) || comp.includes(q);
+      return words.every((w) => haystack.includes(w));
     });
 
     const formatted = filtered.slice(0, 20).map((match) => {
